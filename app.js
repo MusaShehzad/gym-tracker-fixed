@@ -5,15 +5,15 @@
      1. DATA MODEL & STORAGE   - exercises, routines, sessions, active session
      2. APP STATE              - in-memory state while the app is open
      3. INIT                   - runs once when the page loads
-     4. NAVIGATION             - bottom nav tabs + the Manage overlay page
+     4. NAVIGATION             - bottom nav tabs
      5. LOG TAB: ROUTINES VIEW - pick a routine (or Quick Session) to start
      6. LOG TAB: LIVE SESSION  - the on-the-go accordion logging screen
      7. ROUTINE FORM           - create/edit a routine's name + exercises
-     8. MANAGE PAGE            - exercise library + routines admin
-     9. HISTORY TAB
-     10. STATS TAB
-     11. SVG CHART DRAWING
-     12. EXPORT / IMPORT / RESET
+     8. HISTORY TAB
+     9. STATS TAB
+     10. SVG CHART DRAWING
+     11. EXPORT / IMPORT / RESET
+     12. IN-APP DIALOGS        - styled replacements for alert/confirm/prompt
      13. SMALL HELPERS
    ========================================================================== */
 
@@ -109,8 +109,7 @@
    
      // transient state used only while the routine form is open:
      routineFormEditingId: null,       // null = creating new, else id being edited
-     routineFormSelectedIds: new Set(),// exercise ids checked in the form
-     routineFormReturnTo: "log"        // "log" or "manage" — where Cancel/Save returns to
+     routineFormSelectedIds: new Set() // exercise ids checked in the form
    };
    
    
@@ -125,9 +124,9 @@
    
      setupNavigation();
      setupLogTab();
-     setupManagePage();
      setupStatsTab();
      setupSettingsPanel();
+     setupDialog();
    
      renderHeader();
    
@@ -153,33 +152,24 @@
      });
    }
    
-   /** Switches between the three bottom-nav pages. Also used internally to
-    *  hide everything (including the Manage overlay) when a tab is tapped. */
+   /** Switches between the three bottom-nav pages.
+    *
+    *  The "body > " part of the selector matters: a bare ".page" also matches
+    *  any .page nested INSIDE an overlay (the routine form used to have one),
+    *  so tapping a tab would stamp hidden onto it and that overlay would then
+    *  open completely blank. Only the top-level tab pages should be touched. */
    function showPage(pageId) {
-     document.querySelectorAll(".page").forEach((el) => el.setAttribute("hidden", ""));
+     document.querySelectorAll("body > .page").forEach((el) => el.setAttribute("hidden", ""));
      document.getElementById(pageId).removeAttribute("hidden");
-   
+
      document.querySelectorAll(".nav-btn").forEach((btn) => {
        btn.classList.toggle("is-active", btn.dataset.page === pageId);
      });
-   
+
      if (pageId === "page-stats") renderStats();
      if (pageId === "page-history") renderHistory();
    }
-   
-   /** The Manage page isn't part of the bottom nav — it's reached via the
-    *  header icon and returns to whichever tab was active before it opened. */
-   function openManagePage() {
-     document.querySelectorAll(".page").forEach((el) => el.setAttribute("hidden", ""));
-     document.getElementById("page-manage").removeAttribute("hidden");
-     renderManagePage();
-   }
-   function closeManagePage() {
-     document.getElementById("page-manage").setAttribute("hidden", "");
-     const activeBtn = document.querySelector(".nav-btn.is-active");
-     showPage(activeBtn ? activeBtn.dataset.page : "page-log");
-   }
-   
+
    /** Toggles between the two views inside the Log tab. These are plain
     *  <div>s (not .page elements) so switching tabs elsewhere doesn't affect them. */
    function showLogSubview(which) {
@@ -287,26 +277,37 @@
      const defaultWeight = lastEntry && lastEntry.sets.length ? lastEntry.sets[0].weight : exercise && exercise.personalBest ? exercise.personalBest.weight : 0;
      const defaultReps = lastEntry && lastEntry.sets.length ? lastEntry.sets[0].reps : 8;
    
+     // Layout note: the inputs sit in a CSS grid (not a flex row) and the Add
+     // button gets its own full-width line underneath. A flex row of
+     // [input] x [input] [button] overflows the screen on iOS Safari, which
+     // won't shrink form controls below their intrinsic width no matter what
+     // flex-basis/min-width you give them. Grid columns can't overflow.
      const formHtml =
        type === "cardio"
          ? `
            <div class="log-set-form">
              <div class="card__eyebrow">Log Duration</div>
-             <div class="log-set-form__row">
-               <input type="number" inputmode="numeric" class="log-set-form__input" id="duration-input-${entry.id}" value="0">
-               <span class="log-set-form__times">min</span>
-               <button class="btn btn--primary btn--sm" data-action="log-set" data-entry-id="${entry.id}">Add</button>
+             <div class="log-set-form__grid log-set-form__grid--single">
+               <label class="log-set-form__field">
+                 <span class="log-set-form__label">Minutes</span>
+                 <input type="text" inputmode="decimal" class="log-set-form__input" id="duration-input-${entry.id}" value="0">
+               </label>
              </div>
+             <button class="btn btn--primary log-set-form__add" data-action="log-set" data-entry-id="${entry.id}">Add</button>
            </div>
          `
          : `
            <div class="log-set-form">
              <div class="card__eyebrow">Log A Set</div>
-             <div class="log-set-form__row">
-               <input type="number" inputmode="decimal" class="log-set-form__input" id="weight-input-${entry.id}" value="${defaultWeight}">
-               <span class="log-set-form__times">&times;</span>
-               <input type="number" inputmode="numeric" class="log-set-form__input" id="reps-input-${entry.id}" value="${defaultReps}">
-               <button class="btn btn--primary btn--sm" data-action="log-set" data-entry-id="${entry.id}">Add</button>
+             <div class="log-set-form__grid">
+               <label class="log-set-form__field">
+                 <span class="log-set-form__label">Weight</span>
+                 <input type="text" inputmode="decimal" class="log-set-form__input" id="weight-input-${entry.id}" value="${defaultWeight}">
+               </label>
+               <label class="log-set-form__field">
+                 <span class="log-set-form__label">Reps</span>
+                 <input type="text" inputmode="numeric" class="log-set-form__input" id="reps-input-${entry.id}" value="${defaultReps}">
+               </label>
              </div>
              <div class="plate-row">
                <button type="button" class="plate-chip" data-action="plate-step" data-entry-id="${entry.id}" data-step="-5">-5</button>
@@ -316,6 +317,7 @@
                <button type="button" class="plate-chip" data-action="plate-step" data-entry-id="${entry.id}" data-step="10">+10</button>
                <button type="button" class="plate-chip" data-action="plate-step" data-entry-id="${entry.id}" data-step="25">+25</button>
              </div>
+             <button class="btn btn--primary log-set-form__add" data-action="log-set" data-entry-id="${entry.id}">Add Set</button>
            </div>
          `;
    
@@ -340,7 +342,7 @@
    
    /** One delegated listener handles every interaction inside the live
     *  session list (see the data-action attributes rendered above). */
-   function handleSessionListClick(e) {
+   async function handleSessionListClick(e) {
      const el = e.target.closest("[data-action]");
      if (!el) return;
    
@@ -371,7 +373,7 @@
          if (entry.type === "cardio") {
            const durationMin = parseFloat(document.getElementById(`duration-input-${entryId}`).value) || 0;
            if (durationMin <= 0) {
-             alert("Enter a duration first.");
+             appAlert("Enter a duration above zero first.");
              return;
            }
            newSet = { durationMin };
@@ -379,7 +381,7 @@
            const weight = parseFloat(document.getElementById(`weight-input-${entryId}`).value) || 0;
            const reps = parseInt(document.getElementById(`reps-input-${entryId}`).value, 10) || 0;
            if (reps <= 0) {
-             alert("Enter reps first.");
+             appAlert("Enter how many reps you did first.");
              return;
            }
            newSet = { weight, reps };
@@ -409,45 +411,66 @@
    
        case "edit-pb": {
          if (!exercise) {
-           alert("This exercise was removed from your library, so its PB can't be edited here.");
+           appAlert("This exercise was removed from your library, so its PB can't be edited here.");
            return;
          }
-         editExercisePB(exercise);
+         await editExercisePB(exercise);
          renderSessionView();
          break;
        }
      }
    }
    
-   /** Shared by both the live session (edit-pb) and the Manage page —
-    *  a couple of prompt() dialogs is intentionally minimal here; swap this
-    *  for a nicer modal later if you want (see PB badge in session rows). */
-   function editExercisePB(exercise) {
+   /** Opens the in-app PB editor for one exercise. Strength asks for weight and
+    *  reps together in a single dialog (the old version fired two back-to-back
+    *  browser prompts, so cancelling the second one silently threw away the
+    *  first). Resolves once the dialog is dismissed either way. */
+   async function editExercisePB(exercise) {
+     const pb = exercise.personalBest;
+
      if (exercise.type === "cardio") {
-       const val = prompt("Set PB duration (minutes):", exercise.personalBest ? exercise.personalBest.durationMin : "");
-       if (val === null) return;
-       const durationMin = parseFloat(val);
-       if (isNaN(durationMin)) return;
+       const values = await appPrompt({
+         title: "Personal Best",
+         message: exercise.name,
+         fields: [{ label: "Duration (minutes)", value: pb ? pb.durationMin : "", inputmode: "decimal" }]
+       });
+       if (!values) return;
+
+       const durationMin = parseFloat(values[0]);
+       if (isNaN(durationMin) || durationMin <= 0) {
+         await appAlert("That duration didn't look like a number, so nothing was changed.");
+         return;
+       }
        exercise.personalBest = { durationMin, date: todayISO(), source: "manual" };
      } else {
-       const w = prompt("Set PB weight:", exercise.personalBest ? exercise.personalBest.weight : "");
-       if (w === null) return;
-       const r = prompt("Set PB reps:", exercise.personalBest ? exercise.personalBest.reps : "");
-       if (r === null) return;
-       const weight = parseFloat(w);
-       const reps = parseInt(r, 10);
-       if (isNaN(weight) || isNaN(reps)) return;
+       const values = await appPrompt({
+         title: "Personal Best",
+         message: exercise.name,
+         fields: [
+           { label: "Weight", value: pb ? pb.weight : "", inputmode: "decimal" },
+           { label: "Reps", value: pb ? pb.reps : "", inputmode: "numeric" }
+         ]
+       });
+       if (!values) return;
+
+       const weight = parseFloat(values[0]);
+       const reps = parseInt(values[1], 10);
+       if (isNaN(weight) || isNaN(reps) || reps <= 0) {
+         await appAlert("Those numbers didn't look right, so nothing was changed.");
+         return;
+       }
        exercise.personalBest = { weight, reps, date: todayISO(), source: "manual" };
      }
+
      saveExercises();
    }
    
    /** Ends the session: drops any exercise nobody actually logged a set for,
     *  then files it into permanent History. */
-   function finishSession() {
+   async function finishSession() {
      const touchedEntries = state.activeSession.entries.filter((e) => e.sets.length > 0);
      if (touchedEntries.length === 0) {
-       alert("Log at least one set before finishing.");
+       await appAlert("Log at least one set before finishing.");
        return;
      }
    
@@ -461,7 +484,9 @@
      showLogSubview("routines");
      renderRoutinesList();
      renderHeader();
-     alert("Session saved!");
+     renderHistory();
+     renderStats();
+     await appAlert("Session saved to your history.", "Nice work");
    }
    
    /** "+ Add Exercise" inside an active session — adds to THIS session only,
@@ -481,10 +506,10 @@
    function closeSessionExercisePicker() {
      document.getElementById("card-session-exercise-picker").classList.add("hidden");
    }
-   function confirmSessionExercisePicker() {
+   async function confirmSessionExercisePicker() {
      const newName = document.getElementById("input-session-new-exercise").value.trim();
      let exercise;
-   
+
      if (newName) {
        exercise = { id: uid(), name: newName, type: "strength", personalBest: null };
        state.exercises.push(exercise);
@@ -492,7 +517,7 @@
      } else {
        const selectedId = document.getElementById("select-session-add-exercise").value;
        if (!selectedId) {
-         alert("Pick an exercise from the list, or type a new one.");
+         await appAlert("Pick an exercise from the list, or type a new one.");
          return;
        }
        exercise = getExerciseById(selectedId);
@@ -506,7 +531,7 @@
    
    function setupLogTab() {
      document.getElementById("btn-quick-session").addEventListener("click", () => startSessionFromRoutine(null));
-     document.getElementById("btn-new-routine").addEventListener("click", () => openRoutineForm(null, "log"));
+     document.getElementById("btn-new-routine").addEventListener("click", () => openRoutineForm(null));
      document.getElementById("btn-finish-session").addEventListener("click", finishSession);
      document.getElementById("btn-add-session-exercise").addEventListener("click", openSessionExercisePicker);
      document.getElementById("btn-cancel-session-exercise-picker").addEventListener("click", closeSessionExercisePicker);
@@ -525,10 +550,9 @@
    /* ==========================================================================
       7. ROUTINE FORM
       ========================================================================== */
-   function openRoutineForm(routineId, returnTo) {
+   function openRoutineForm(routineId) {
      state.routineFormEditingId = routineId;
-     state.routineFormReturnTo = returnTo;
-   
+
      const routine = routineId ? state.routines.find((r) => r.id === routineId) : null;
      document.getElementById("routine-form-title").textContent = routine ? "Edit Routine" : "New Routine";
      document.getElementById("input-routine-name").value = routine ? routine.name : "";
@@ -585,15 +609,15 @@
      renderRoutineChecklist();
    }
    
-   function saveRoutineForm() {
+   async function saveRoutineForm() {
      const name = document.getElementById("input-routine-name").value.trim();
      if (!name) {
-       alert("Give the routine a name.");
+       await appAlert("Give the routine a name before saving.");
        return;
      }
-   
+
      const exerciseIds = Array.from(state.routineFormSelectedIds);
-   
+
      if (state.routineFormEditingId) {
        const routine = state.routines.find((r) => r.id === state.routineFormEditingId);
        routine.name = name;
@@ -602,142 +626,14 @@
        state.routines.push({ id: uid(), name, exerciseIds });
      }
      saveRoutines();
-   
-     const returnTo = state.routineFormReturnTo;
+
      closeRoutineForm();
-     if (returnTo === "manage") renderManagePage();
-     else renderRoutinesList();
+     renderRoutinesList();
    }
    
    
    /* ==========================================================================
-      8. MANAGE PAGE (exercise library + routines admin)
-      ========================================================================== */
-   function setupManagePage() {
-     document.getElementById("btn-add-lib-exercise").addEventListener("click", addLibraryExercise);
-     document.getElementById("btn-manage-new-routine").addEventListener("click", () => openRoutineForm(null, "manage"));
-   
-     document.querySelectorAll("#new-lib-exercise-type-toggle .segmented__btn").forEach((btn) => {
-       btn.addEventListener("click", () => {
-         document.querySelectorAll("#new-lib-exercise-type-toggle .segmented__btn").forEach((b) => b.classList.remove("is-active"));
-         btn.classList.add("is-active");
-       });
-     });
-   }
-   
-   function renderManagePage() {
-     renderExerciseLibraryList();
-     renderRoutinesManageList();
-   }
-   
-   function renderExerciseLibraryList() {
-     const container = document.getElementById("exercise-library-list");
-   
-     if (state.exercises.length === 0) {
-       container.innerHTML = `<p class="text-muted" style="font-size:13px;">No exercises yet — add your first one below.</p>`;
-       return;
-     }
-   
-     container.innerHTML = state.exercises
-       .map(
-         (ex) => `
-           <div class="lib-row">
-             <div>
-               <div class="lib-row__name">${escapeHtml(ex.name)}</div>
-               <div class="lib-row__type">${ex.type}${ex.personalBest ? " &middot; PB " + formatPB(ex) : ""}</div>
-             </div>
-             <div class="lib-row__actions">
-               <button data-action="edit-pb-lib" data-exercise-id="${ex.id}">Edit PB</button>
-               <button class="danger" data-action="delete-exercise" data-exercise-id="${ex.id}">Delete</button>
-             </div>
-           </div>
-         `
-       )
-       .join("");
-   
-     container.querySelectorAll("[data-action=edit-pb-lib]").forEach((btn) => {
-       btn.addEventListener("click", () => {
-         editExercisePB(getExerciseById(btn.dataset.exerciseId));
-         renderManagePage();
-       });
-     });
-     container.querySelectorAll("[data-action=delete-exercise]").forEach((btn) => {
-       btn.addEventListener("click", () => deleteExercise(btn.dataset.exerciseId));
-     });
-   }
-   
-   function deleteExercise(exerciseId) {
-     if (!confirm("Delete this exercise from your library? It'll also be removed from any routines. Past session history is kept as-is.")) return;
-   
-     state.exercises = state.exercises.filter((e) => e.id !== exerciseId);
-     saveExercises();
-   
-     state.routines.forEach((r) => {
-       r.exerciseIds = r.exerciseIds.filter((id) => id !== exerciseId);
-     });
-     saveRoutines();
-   
-     renderManagePage();
-   }
-   
-   function renderRoutinesManageList() {
-     const container = document.getElementById("routines-manage-list");
-   
-     if (state.routines.length === 0) {
-       container.innerHTML = `<p class="text-muted" style="font-size:13px;">No routines yet.</p>`;
-       return;
-     }
-   
-     container.innerHTML = state.routines
-       .map(
-         (r) => `
-           <div class="lib-row">
-             <div>
-               <div class="lib-row__name">${escapeHtml(r.name)}</div>
-               <div class="lib-row__type">${r.exerciseIds.length} exercises</div>
-             </div>
-             <div class="lib-row__actions">
-               <button data-action="edit-routine" data-routine-id="${r.id}">Edit</button>
-               <button class="danger" data-action="delete-routine" data-routine-id="${r.id}">Delete</button>
-             </div>
-           </div>
-         `
-       )
-       .join("");
-   
-     container.querySelectorAll("[data-action=edit-routine]").forEach((btn) => {
-       btn.addEventListener("click", () => openRoutineForm(btn.dataset.routineId, "manage"));
-     });
-     container.querySelectorAll("[data-action=delete-routine]").forEach((btn) => {
-       btn.addEventListener("click", () => deleteRoutine(btn.dataset.routineId));
-     });
-   }
-   
-   function deleteRoutine(routineId) {
-     if (!confirm("Delete this routine? Sessions already logged from it stay in History.")) return;
-     state.routines = state.routines.filter((r) => r.id !== routineId);
-     saveRoutines();
-     renderManagePage();
-   }
-   
-   function addLibraryExercise() {
-     const name = document.getElementById("input-new-lib-exercise-name").value.trim();
-     if (!name) {
-       alert("Give the exercise a name.");
-       return;
-     }
-     const type = document.querySelector("#new-lib-exercise-type-toggle .segmented__btn.is-active").dataset.type;
-   
-     state.exercises.push({ id: uid(), name, type, personalBest: null });
-     saveExercises();
-   
-     document.getElementById("input-new-lib-exercise-name").value = "";
-     renderExerciseLibraryList();
-   }
-   
-   
-   /* ==========================================================================
-      9. HISTORY TAB
+      8. HISTORY TAB
       ========================================================================== */
    function renderHistory() {
      const container = document.getElementById("history-list");
@@ -803,8 +699,10 @@
      `;
    }
    
-   function deleteSession(sessionId) {
-     if (!confirm("Delete this session? This can't be undone.")) return;
+   async function deleteSession(sessionId) {
+     const ok = await appConfirm("This can't be undone.", { title: "Delete session?", okText: "Delete", danger: true });
+     if (!ok) return;
+
      state.sessions = state.sessions.filter((s) => s.id !== sessionId);
      saveSessions();
      renderHistory();
@@ -814,7 +712,7 @@
    
    
    /* ==========================================================================
-      10. STATS TAB
+      9. STATS TAB
       ========================================================================== */
    function setupStatsTab() {
      document.getElementById("select-exercise-chart").addEventListener("change", renderStrengthChart);
@@ -911,7 +809,7 @@
    
    
    /* ==========================================================================
-      11. SVG CHART DRAWING
+      10. SVG CHART DRAWING
       Hand-rolled, dependency-free (no CDN/chart library), so the app keeps
       working fully offline. Each function returns an SVG string.
       ========================================================================== */
@@ -989,7 +887,7 @@
    
    
    /* ==========================================================================
-      12. EXPORT / IMPORT / RESET
+      11. EXPORT / IMPORT / RESET
       ========================================================================== */
    function setupSettingsPanel() {
      document.getElementById("btn-open-settings").addEventListener("click", () => {
@@ -1026,34 +924,51 @@
      if (!file) return;
    
      const reader = new FileReader();
-     reader.onload = () => {
+     reader.onload = async () => {
+       let payload;
        try {
-         const payload = JSON.parse(reader.result);
+         payload = JSON.parse(reader.result);
          if (!Array.isArray(payload.sessions)) throw new Error("Invalid file format");
-   
-         if (!confirm(`Import ${payload.sessions.length} sessions (plus your exercise library & routines)? This replaces your current data.`)) return;
-   
-         state.sessions = payload.sessions;
-         state.exercises = Array.isArray(payload.exercises) ? payload.exercises : [];
-         state.routines = Array.isArray(payload.routines) ? payload.routines : [];
-         saveSessions();
-         saveExercises();
-         saveRoutines();
-   
-         refreshAllViews();
-         alert("Import complete.");
        } catch (err) {
-         alert("Couldn't read that file — make sure it's a Gym Tracker export.");
+         await appAlert("Couldn't read that file — make sure it's a Gym Tracker export.", "Import failed");
+         return;
        }
+
+       const ok = await appConfirm(
+         `This replaces everything currently on this device with ${payload.sessions.length} session${payload.sessions.length === 1 ? "" : "s"}, plus the exercise library and routines from the file.`,
+         { title: "Import backup?", okText: "Import", danger: true }
+       );
+       if (!ok) return;
+
+       state.sessions = payload.sessions;
+       state.exercises = Array.isArray(payload.exercises) ? payload.exercises : [];
+       state.routines = Array.isArray(payload.routines) ? payload.routines : [];
+       saveSessions();
+       saveExercises();
+       saveRoutines();
+
+       refreshAllViews();
+       await appAlert("Your backup has been restored.", "Import complete");
      };
      reader.readAsText(file);
      evt.target.value = "";
    }
    
-   function resetAllData() {
-     if (!confirm("Erase ALL data on this device (exercises, routines, and session history)? This can't be undone.")) return;
-     if (!confirm("Really sure? This deletes everything permanently.")) return;
-   
+   async function resetAllData() {
+     const first = await appConfirm("This erases every exercise, routine and logged session on this device.", {
+       title: "Erase all data?",
+       okText: "Erase",
+       danger: true
+     });
+     if (!first) return;
+
+     const second = await appConfirm("Last chance — this is permanent and can't be undone.", {
+       title: "Really sure?",
+       okText: "Yes, erase everything",
+       danger: true
+     });
+     if (!second) return;
+
      state.exercises = [];
      state.routines = [];
      state.sessions = [];
@@ -1075,10 +990,118 @@
      renderStats();
      if (!document.getElementById("routines-view").hidden) renderRoutinesList();
      if (!document.getElementById("session-view").hidden) renderSessionView();
-     if (!document.getElementById("page-manage").hidden) renderManagePage();
    }
    
    
+   /* ==========================================================================
+      12. IN-APP DIALOGS
+      --------------------------------------------------------------------------
+      Styled stand-ins for the browser's alert() / confirm() / prompt(), which
+      render as an OS box titled with the site's domain ("...github.io says").
+      Markup lives in index.html as #app-dialog.
+
+      All three return a Promise, so call sites read almost like the originals:
+
+        await appAlert("Nope.")
+        if (await appConfirm("Delete?", { danger: true })) { ... }
+        const [w, r] = (await appPrompt({ fields: [...] })) ?? [];
+
+      appPrompt resolves to an array of the field values, or null if dismissed.
+      ========================================================================== */
+   let dialogResolve = null; // set while a dialog is open; called on close
+
+   function setupDialog() {
+     const backdrop = document.getElementById("app-dialog");
+
+     // Submitting the <form> = tapping OK, which also makes the phone
+     // keyboard's "Go"/"Done" key confirm the dialog.
+     document.getElementById("app-dialog-form").addEventListener("submit", (e) => {
+       e.preventDefault();
+       closeDialog(readDialogValues());
+     });
+
+     document.getElementById("app-dialog-cancel").addEventListener("click", () => closeDialog(null));
+
+     // Tapping the dimmed area outside the dialog cancels it.
+     backdrop.addEventListener("click", (e) => {
+       if (e.target === backdrop) closeDialog(null);
+     });
+
+     document.addEventListener("keydown", (e) => {
+       if (e.key === "Escape" && dialogResolve) closeDialog(null);
+     });
+   }
+
+   /** Low-level opener. Resolves with an array of field values on confirm
+    *  (an empty array when there are no fields), or null on cancel. */
+   function openDialog({ title, message = "", fields = [], okText = "OK", showCancel = true, danger = false }) {
+     // Never stack dialogs — resolve whatever is already open as cancelled.
+     if (dialogResolve) closeDialog(null);
+
+     document.getElementById("app-dialog-title").textContent = title;
+
+     const messageEl = document.getElementById("app-dialog-message");
+     messageEl.textContent = message;
+     messageEl.hidden = !message;
+
+     // type="text" + inputmode gives the right phone keypad without the
+     // quirks type="number" brings (spinners, and select() throwing in Safari).
+     const fieldsEl = document.getElementById("app-dialog-fields");
+     fieldsEl.innerHTML = fields
+       .map(
+         (f, i) => `
+           <div class="field">
+             <label class="field__label" for="app-dialog-field-${i}">${escapeHtml(f.label)}</label>
+             <input type="text" id="app-dialog-field-${i}" inputmode="${f.inputmode || "text"}" value="${escapeHtml(String(f.value ?? ""))}">
+           </div>
+         `
+       )
+       .join("");
+
+     const okBtn = document.getElementById("app-dialog-ok");
+     okBtn.textContent = okText;
+     okBtn.className = "btn " + (danger ? "btn--danger" : "btn--primary");
+
+     const cancelBtn = document.getElementById("app-dialog-cancel");
+     cancelBtn.hidden = !showCancel;
+
+     document.getElementById("app-dialog").classList.remove("hidden");
+
+     const firstInput = fieldsEl.querySelector("input");
+     if (firstInput) {
+       firstInput.focus();
+       firstInput.select();
+     }
+
+     return new Promise((resolve) => {
+       dialogResolve = resolve;
+     });
+   }
+
+   function readDialogValues() {
+     return Array.from(document.querySelectorAll("#app-dialog-fields input")).map((input) => input.value.trim());
+   }
+
+   function closeDialog(result) {
+     document.getElementById("app-dialog").classList.add("hidden");
+     const resolve = dialogResolve;
+     dialogResolve = null;
+     if (resolve) resolve(result);
+   }
+
+   function appAlert(message, title = "Heads up") {
+     return openDialog({ title, message, showCancel: false, okText: "Got it" });
+   }
+
+   function appConfirm(message, { title = "Are you sure?", okText = "Confirm", danger = false } = {}) {
+     return openDialog({ title, message, okText, danger }).then((result) => result !== null);
+   }
+
+   function appPrompt({ title, message = "", fields, okText = "Save" }) {
+     return openDialog({ title, message, fields, okText });
+   }
+
+
    /* ==========================================================================
       13. SMALL HELPERS
       ========================================================================== */

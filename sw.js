@@ -1,6 +1,10 @@
 // Minimal service worker — makes the app installable and lets it
 // load instantly (and work offline) once it's been opened once.
-const CACHE_NAME = 'iron-log-v1';
+// IMPORTANT: bump this version string every time you change index.html,
+// app.js or style.css. The fetch handler below is cache-first, so an already
+// installed copy of the app will keep serving the OLD files forever until the
+// cache name changes — that's what forces phones to pick up an update.
+const CACHE_NAME = 'iron-log-v2';
 const ASSETS = [
   './',
   './index.html',
