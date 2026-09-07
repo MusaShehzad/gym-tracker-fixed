@@ -1,0 +1,852 @@
+/* ==========================================================================
+   GYM TRACKER — STYLES
+   ==========================================================================
+   File map (search for these section headers to jump around):
+     1. DESIGN TOKENS     - all colors/fonts/spacing in one place
+     2. RESET & BASE      - global element defaults
+     3. LAYOUT SHELL      - app header, page container, bottom nav
+     4. COMPONENTS: CARDS - the boxed sections used everywhere
+     5. COMPONENTS: FORMS - inputs, weight steppers, buttons
+     6. COMPONENTS: LISTS - session/entry rows in History
+     7. COMPONENTS: STATS - stat tiles + charts (Stats tab)
+     8. COMPONENTS: ROUTINES & LIVE SESSION - routine cards, accordion exercise rows, PB badge, set chips
+     9. COMPONENTS: MANAGE LIBRARY - exercise library & routine editor (reached via header icon)
+     10. UTILITIES        - small reusable helper classes
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. DESIGN TOKENS
+   Change colors, fonts, or spacing here and it updates everywhere.
+   ========================================================================== */
+   :root {
+    /* --- Color palette -----------------------------------------------------
+       Inspired by a weight room: graphite floor, chalk dust, iron plates.
+       Change these 6 values to re-theme the entire app. */
+    --color-bg: #14161a;          /* app background (dark graphite) */
+    --color-surface: #1d2024;     /* cards / raised panels */
+    --color-surface-alt: #24282e; /* slightly lighter panel, for nested items */
+    --color-border: #33383f;      /* hairline dividers */
+    --color-text: #f2f0ea;        /* primary text (chalk white) */
+    --color-text-muted: #8b909a;  /* secondary/label text */
+  
+    --color-accent: #e14432;      /* PRIMARY accent — "plate red" (buttons, active states) */
+    --color-accent-dim: #4a2420;  /* accent used as a dim background wash */
+    --color-secondary: #4c7a93;   /* secondary accent — "steel blue" (2nd chart series) */
+    --color-pr: #d9a441;          /* gold — used ONLY to mark personal records */
+    --color-danger: #c1443a;      /* delete/destructive actions */
+  
+    /* --- Typography ----------------------------------------------------------
+       No external fonts are loaded (keeps the app 100% offline-capable).
+       Headers fake a "condensed stencil" look using uppercase + tight
+       letter-spacing on the system font, instead of depending on a specific
+       condensed font being installed on the phone. */
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  
+    /* --- Spacing & shape ------------------------------------------------- */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+  
+    /* height reserved for the fixed bottom nav, used to pad page content */
+    --nav-height: 72px;
+  }
+  
+  
+  /* ==========================================================================
+     2. RESET & BASE
+     ========================================================================== */
+  * {
+    box-sizing: border-box;
+  }
+  
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    -webkit-tap-highlight-color: transparent; /* removes gray flash on mobile tap */
+  }
+  
+  body {
+    /* iOS "Add to Home Screen" hides the browser chrome; this keeps content
+       off of the phone's notch/status bar and home indicator area. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    overscroll-behavior-y: none; /* stops the whole-page rubber-band bounce on iOS */
+    min-height: 100vh;
+  }
+  
+  h1, h2, h3 {
+    margin: 0;
+    font-family: var(--font-display);
+  }
+  
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  
+  input, select {
+    font-family: inherit;
+  }
+  
+  /* respects the user's OS-level "reduce motion" accessibility setting */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+  
+  
+  /* ==========================================================================
+     3. LAYOUT SHELL
+     ========================================================================== */
+  
+  /* Top header: app title + today's date/streak eyebrow */
+  .app-header {
+    padding: var(--space-5) var(--space-4) var(--space-4);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  
+  .app-header__title {
+    font-size: 28px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+  }
+  
+  .app-header__subtitle {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: var(--space-1);
+  }
+  
+  /* small icon-only button in the header, e.g. settings/export */
+  .icon-btn {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Each tab's content area */
+  .page {
+    padding: 0 var(--space-4);
+    padding-bottom: calc(var(--nav-height) + var(--space-6));
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  
+  /* hides all pages except the active one — toggled by app.js */
+  .page[hidden] {
+    display: none;
+  }
+  
+  /* Fixed bottom tab bar, mimics a native app's nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-height);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    z-index: 100;
+  }
+  
+  .nav-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  
+  .nav-btn svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+  }
+  
+  .nav-btn.is-active {
+    color: var(--color-accent);
+  }
+  
+  
+  /* ==========================================================================
+     4. COMPONENTS: CARDS
+     ========================================================================== */
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+  
+  .card__eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: var(--space-2);
+  }
+  
+  .card__title {
+    font-size: 18px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--space-3);
+  }
+  
+  /* empty-state messaging (shown when there's no data yet) */
+  .empty-state {
+    text-align: center;
+    padding: var(--space-6) var(--space-4);
+    color: var(--color-text-muted);
+  }
+  
+  .empty-state__title {
+    color: var(--color-text);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: var(--space-1);
+  }
+  
+  
+  /* ==========================================================================
+     5. COMPONENTS: FORMS
+     ========================================================================== */
+  .field {
+    margin-bottom: var(--space-3);
+  }
+  
+  .field__label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+  }
+  
+  .field input[type="text"],
+  .field input[type="number"],
+  .field input[type="date"],
+  .field select {
+    width: 100%;
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    padding: 12px var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: 16px; /* 16px prevents iOS Safari auto-zoom on focus */
+  }
+  
+  .field input:focus,
+  .field select:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  
+  /* Primary call-to-action button (full width, filled) */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 14px var(--space-4);
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 14px;
+    border: 1px solid transparent;
+  }
+  
+  .btn--primary {
+    background: var(--color-accent);
+    color: #fff;
+  }
+  
+  .btn--secondary {
+    background: var(--color-surface-alt);
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+  
+  .btn--ghost {
+    background: none;
+    color: var(--color-text-muted);
+    border: 1px dashed var(--color-border);
+  }
+  
+  .btn--danger {
+    background: none;
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+  }
+  
+  .btn--sm {
+    width: auto;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+  
+  /* Toggle pair, e.g. Strength / Cardio */
+  .segmented {
+    display: flex;
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    margin-bottom: var(--space-3);
+  }
+  
+  .segmented__btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    padding: 10px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+  }
+  
+  .segmented__btn.is-active {
+    background: var(--color-accent);
+    color: #fff;
+  }
+  
+  /* --- Weight stepper -------------------------------------------------------
+     The "signature" interaction: instead of just typing a number, you can
+     tap plate-style chips to bump the weight up/down, echoing how you'd
+     actually load a barbell. The number field still works by typing too. */
+  .weight-stepper {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  
+  .weight-stepper input {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+    flex: 1;
+  }
+  
+  .plate-chip {
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 4px;
+    border-radius: var(--radius-sm);
+    min-width: 38px;
+  }
+  
+  .plate-chip:active {
+    background: var(--color-accent-dim);
+    border-color: var(--color-accent);
+  }
+  
+  .plate-row {
+    display: flex;
+    gap: 6px;
+    margin-top: var(--space-2);
+    flex-wrap: wrap;
+  }
+  
+  /* One set row (weight x reps) inside an exercise entry */
+  .set-row {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 32px;
+    gap: var(--space-2);
+    align-items: center;
+    margin-bottom: var(--space-2);
+  }
+  
+  .set-row__index {
+    font-family: var(--font-mono);
+    color: var(--color-text-muted);
+    font-size: 13px;
+    text-align: center;
+  }
+  
+  .set-row input {
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    text-align: center;
+    font-size: 15px;
+  }
+  
+  .set-row__remove {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 18px;
+  }
+  
+  
+  /* ==========================================================================
+     6. COMPONENTS: LISTS  (used in History tab, and draft entries in Log tab)
+     ========================================================================== */
+  .entry-row {
+    background: var(--color-surface-alt);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  
+  .entry-row__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  
+  .entry-row__name {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 14px;
+  }
+  
+  .entry-row__meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+  
+  .session-card__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-3);
+  }
+  
+  .session-card__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+  
+  .session-card__actions .btn {
+    width: auto;
+    flex: 1;
+  }
+  
+  
+  /* ==========================================================================
+     7. COMPONENTS: STATS  (Stats tab: tiles + hand-drawn SVG charts)
+     ========================================================================== */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  
+  .stat-tile {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+  
+  .stat-tile__value {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--color-accent);
+  }
+  
+  .stat-tile__label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+  }
+  
+  /* container the SVG charts get injected into by app.js */
+  .chart-container {
+    width: 100%;
+    overflow: visible;
+  }
+  
+  .chart-container svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  /* legend dot used under charts with two series */
+  .chart-legend {
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-2);
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+  
+  .chart-legend__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .chart-legend__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  
+  
+  /* ==========================================================================
+     8. COMPONENTS: ROUTINES & LIVE SESSION
+     --------------------------------------------------------------------------
+     Used by the Log tab: the "pick a routine to start" list, and the
+     accordion-style exercise rows you log sets into during an active session.
+     ========================================================================== */
+  
+  /* --- Routine picker (default Log tab view) ------------------------------ */
+  .routine-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .routine-card__name {
+    font-size: 16px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  
+  .routine-card__meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+  }
+  
+  .routine-card__chevron {
+    color: var(--color-text-muted);
+    font-size: 20px;
+  }
+  
+  /* --- Active session top bar ---------------------------------------------
+     Sits above the exercise list while a session is in progress. The Finish
+     button is always visible here so you never have to hunt for it mid-workout. */
+  .session-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+  }
+  
+  .session-topbar__title {
+    font-size: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  
+  .session-topbar .btn {
+    width: auto;
+  }
+  
+  /* --- Accordion exercise row ----------------------------------------------
+     Collapsed: name + PB badge + last-session reference line (matches the
+     user's own notes-app shorthand: "name — PB" then "(last: ...)" below).
+     Expanded (.is-expanded): reveals the log-a-set mini form + this
+     session's logged sets as chips. */
+  .exercise-row {
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-3) 0;
+  }
+  
+  .exercise-row:last-child {
+    border-bottom: none;
+  }
+  
+  .exercise-row__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    background: none;
+    border: none;
+    width: 100%;
+    padding: 0;
+    color: var(--color-text);
+    text-align: left;
+  }
+  
+  .exercise-row__name {
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  
+  /* dims once an exercise has no sets logged yet this session vs after —
+     reuses --color-text-muted so untouched rows read as lower-priority */
+  .exercise-row__name.is-untouched {
+    color: var(--color-text-muted);
+  }
+  
+  .exercise-row__last {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+  }
+  
+  .exercise-row__body {
+    margin-top: var(--space-3);
+  }
+  
+  .exercise-row__body[hidden] {
+    display: none;
+  }
+  
+  /* Personal-best badge — gold, matches the PR color used in charts */
+  .pb-badge {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-pr);
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  
+  .pb-badge--empty {
+    color: var(--color-text-muted);
+    font-weight: 400;
+  }
+  
+  /* Inline "log a set" mini-form inside an expanded exercise row */
+  .log-set-form {
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  
+  .log-set-form__row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  
+  .log-set-form__input {
+    flex: 1;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    font-weight: 700;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+  }
+  
+  .log-set-form__times {
+    color: var(--color-text-muted);
+    font-size: 13px;
+  }
+  
+  /* Set chips: the running record of what's been logged this session,
+     e.g. "70×6". A gold outline marks one that set a new PR. */
+  .set-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    margin: 0 6px 6px 0;
+  }
+  
+  .set-chip--pr {
+    border-color: var(--color-pr);
+    color: var(--color-pr);
+  }
+  
+  .set-chip__remove {
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.6;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0 0 0 2px;
+  }
+  
+  
+  /* ==========================================================================
+     9. COMPONENTS: MANAGE LIBRARY
+     --------------------------------------------------------------------------
+     Reached via the header's library icon. Two sections: the exercise
+     library (add/edit-PB/delete) and routines (create/edit membership/delete).
+     ========================================================================== */
+  
+  .manage-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-5) var(--space-4) var(--space-2);
+  }
+  
+  .manage-header__back {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* One row in the exercise library list */
+  .lib-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .lib-row:last-child {
+    border-bottom: none;
+  }
+  
+  .lib-row__name {
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+  }
+  
+  .lib-row__type {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+  }
+  
+  .lib-row__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  
+  .lib-row__actions button {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  
+  .lib-row__actions .danger {
+    color: var(--color-danger);
+  }
+  
+  /* Checkbox list used when building/editing a routine's exercise list */
+  .checklist-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 14px;
+  }
+  
+  .checklist-item:last-child {
+    border-bottom: none;
+  }
+  
+  .checklist-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-accent);
+  }
+  
+  
+  /* ==========================================================================
+     10. UTILITIES
+     ========================================================================== */
+  .hidden { display: none !important; }
+  
+  /* Full-screen overlay used by the routine form — sits above every tab
+     regardless of which one is currently active underneath it. */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--color-bg);
+    z-index: 200;
+    overflow-y: auto;
+    padding-bottom: var(--space-6);
+  }
+  .mt-2 { margin-top: var(--space-2); }
+  .mt-3 { margin-top: var(--space-3); }
+  .mt-4 { margin-top: var(--space-4); }
+  .flex-row { display: flex; gap: var(--space-2); }
+  .text-muted { color: var(--color-text-muted); }
+  .text-center { text-align: center; }
