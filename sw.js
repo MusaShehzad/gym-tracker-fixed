@@ -4,7 +4,7 @@
 // app.js or style.css. The fetch handler below is cache-first, so an already
 // installed copy of the app will keep serving the OLD files forever until the
 // cache name changes — that's what forces phones to pick up an update.
-const CACHE_NAME = 'iron-log-v2';
+const CACHE_NAME = 'iron-log-v3';
 const ASSETS = [
   './',
   './index.html',

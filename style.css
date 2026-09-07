@@ -80,12 +80,8 @@
        blocks, which is one of the ways a row can grow wider than the screen. */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-
-    /* Nothing in this app is meant to scroll sideways. If some future row
-       ever does overflow, clip it rather than letting the whole page pan. */
-    overflow-x: hidden;
   }
-  
+
   body {
     /* iOS "Add to Home Screen" hides the browser chrome; this keeps content
        off of the phone's notch/status bar and home indicator area. */
@@ -93,6 +89,15 @@
     padding-bottom: env(safe-area-inset-bottom);
     overscroll-behavior-y: none; /* stops the whole-page rubber-band bounce on iOS */
     min-height: 100vh;
+
+    /* Nothing here is meant to scroll sideways.
+       This MUST be `clip`, never `hidden`: per spec, an overflow of `hidden`
+       on one axis forces the other axis from `visible` to `auto`, which turns
+       the element into a scroll container. On iOS that broke vertical
+       scrolling outright — the page only moved after a pinch. `clip` is
+       explicitly exempt from that rule, so it hides sideways overflow while
+       leaving normal page scrolling completely alone. */
+    overflow-x: clip;
   }
   
   h1, h2, h3 {
