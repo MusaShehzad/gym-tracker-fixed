@@ -690,6 +690,8 @@
   
   .log-set-form__input {
     flex: 1;
+    min-width: 0; /* lets the input actually shrink instead of overflowing the row on narrow phones */
+    width: 100%;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     color: var(--color-text);
@@ -699,11 +701,17 @@
     font-weight: 700;
     padding: 10px;
     border-radius: var(--radius-sm);
+    box-sizing: border-box;
   }
   
   .log-set-form__times {
+    flex-shrink: 0;
     color: var(--color-text-muted);
     font-size: 13px;
+  }
+  
+  .log-set-form__row .btn--sm {
+    flex-shrink: 0;
   }
   
   /* Set chips: the running record of what's been logged this session,
